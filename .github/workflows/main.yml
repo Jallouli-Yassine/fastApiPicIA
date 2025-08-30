@@ -1,0 +1,94 @@
+name: Build, Test and Deploy FastAPI Application
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install pytest
+
+      - name: Lint with flake8
+        run: |
+          pip install flake8
+          # stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # exit-zero treats all errors as warnings
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: Test with pytest
+        run: |
+          pytest
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to Azure VM
+        uses: appleboy/ssh-action@master
+        with:
+          host: arena-link.francecentral.cloudapp.azure.com
+          username: ${{ secrets.VM_USERNAME }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script_stop: true
+          script: |
+            # Créer un dossier pour l'application si nécessaire
+            mkdir -p ~/fastapi-app
+            
+            # Supprimer les fichiers existants (sauf les variables d'environnement)
+            find ~/fastapi-app -type f -not -name ".env" -delete
+
+      - name: Copy files to VM
+        uses: appleboy/scp-action@master
+        with:
+          host: arena-link.francecentral.cloudapp.azure.com
+          username: ${{ secrets.VM_USERNAME }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: "./*"
+          target: "~/fastapi-app"
+          strip_components: 0
+
+      - name: Build and start application
+        uses: appleboy/ssh-action@master
+        with:
+          host: arena-link.francecentral.cloudapp.azure.com
+          username: ${{ secrets.VM_USERNAME }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script_stop: true
+          script: |
+            cd ~/fastapi-app
+            
+            # Construire l'image Docker
+            docker build -t fastapi-app:latest .
+            
+            # Arrêter le conteneur existant s'il existe
+            docker stop fastapi-app || true
+            docker rm fastapi-app || true
+            
+            # Exécuter le nouveau conteneur
+            docker run -d --name fastapi-app -p 80:8000 fastapi-app:latest
+            
+            # Nettoyer les images non utilisées
+            docker image prune -f
+
