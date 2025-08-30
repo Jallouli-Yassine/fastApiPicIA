@@ -8,3 +8,5 @@ transformers==4.33.2
 numpy==1.25.2
 requests==2.31.0
 huggingface-hub
+python-dotenv==1.0.0
+
