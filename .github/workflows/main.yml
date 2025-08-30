@@ -96,21 +96,23 @@ jobs:
             docker build -t fastapi-app:latest . || { echo "Erreur lors de la construction Docker"; exit 1; }
             
             # Exécuter le nouveau conteneur avec redirection de logs
-            # Modification du port de 80 à 8000 pour éviter le conflit
             echo "Démarrage du nouveau conteneur..."
-            docker run -d --name fastapi-app -p 8000:8000 \
-              --restart unless-stopped \
-              fastapi-app:latest
+            docker run -d --name fastapi-app -p 8000:8000 --restart unless-stopped fastapi-app:latest
             
             # Vérifier que le conteneur est bien démarré
             echo "Vérification du statut du conteneur..."
             sleep 5
-            if [ "$(docker inspect -f {{.State.Running}} fastapi-app)" != "true" ]; then
+            RUNNING=$(docker inspect --format="{{.State.Running}}" fastapi-app 2>/dev/null)
+            if [ "$RUNNING" != "true" ]; then
               echo "ERREUR: Le conteneur n'a pas démarré correctement. Affichage des logs:"
               docker logs fastapi-app
               exit 1
+            else
+              echo "Le conteneur a démarré avec succès!"
+              docker ps | grep fastapi-app
+            fi
             
             # Nettoyer les images non utilisées
+            echo "Nettoyage des images non utilisées..."
             docker image prune -f
-
 
