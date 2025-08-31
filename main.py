@@ -9,8 +9,8 @@ from services.Service import Service
 # Création de l'application
 app = FastAPI()
 
-# Création d'un routeur sans préfixe (pour éviter le double /fastapi)
-router = APIRouter()
+# Création d'un routeur avec préfixe /fastapi pour correspondre à la configuration nginx
+router = APIRouter(prefix="/fastapi")
 
 # Enable CORS
 app.add_middleware(
