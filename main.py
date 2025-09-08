@@ -48,6 +48,7 @@ async def team_logo_description(team_name: str = Form(...), file: UploadFile = F
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating team logo description: {str(e)}")
 
+# Generate multiple suggestions for team logo descriptions PFE
 @router.post('/team-logo-descriptions')
 async def team_logo_descriptions(team_name: str = Form(...), file: UploadFile = File(...), num_suggestions: int = Form(3)):
     try:
@@ -60,6 +61,7 @@ async def team_logo_descriptions(team_name: str = Form(...), file: UploadFile = 
 @router.get("/")
 async def root():
     return {"message": "Hello World"}
+
 
 # Optional: Greeting endpoint
 @router.get("/hello/{name}")
